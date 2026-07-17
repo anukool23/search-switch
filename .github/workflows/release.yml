@@ -1,0 +1,126 @@
+name: Release
+
+# Manual release: choose a branch and a channel (beta or stable).
+# The job bumps the version, publishes to npm with the matching dist-tag,
+# commits the bump, then creates and pushes a tag AND a branch both named
+# after the new version.
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: "Branch to release from"
+        required: true
+        default: "main"
+      release_type:
+        description: "Release channel"
+        required: true
+        type: choice
+        default: "beta"
+        options:
+          - beta
+          - stable
+      bump:
+        description: "Version bump (stable only; beta always increments the -beta.N counter)"
+        required: true
+        type: choice
+        default: "patch"
+        options:
+          - patch
+          - minor
+          - major
+
+# Allow the job to push commits, tags and branches back to the repo.
+permissions:
+  contents: write
+
+# Don't run two releases for the same branch at once.
+concurrency:
+  group: release-${{ github.event.inputs.branch }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout ${{ github.event.inputs.branch }}
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.branch }}
+          fetch-depth: 0
+          # Persisted credentials are reused by the later `git push` steps.
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          # Wires ~/.npmrc to read NODE_AUTH_TOKEN, so `npm publish` is authed.
+          registry-url: "https://registry.npmjs.org"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck & test
+        run: |
+          npm run typecheck
+          npm test
+
+      - name: Configure git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Bump version
+        id: bump
+        run: |
+          if [ "${{ github.event.inputs.release_type }}" = "beta" ]; then
+            # 1.0.0 -> 1.0.1-beta.0 ; 1.0.1-beta.0 -> 1.0.1-beta.1
+            npm version prerelease --preid=beta --no-git-tag-version
+          else
+            # patch/minor/major; from a -beta.N prerelease, `patch` lands on the release
+            npm version "${{ github.event.inputs.bump }}" --no-git-tag-version
+          fi
+          VERSION="$(node -p "require('./package.json').version")"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Releasing version $VERSION on the ${{ github.event.inputs.release_type }} channel"
+
+      - name: Build
+        run: npm run build
+
+      - name: Publish to npm
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if [ "${{ github.event.inputs.release_type }}" = "beta" ]; then
+            npm publish --tag beta --access public
+          else
+            npm publish --tag latest --access public
+          fi
+
+      - name: Commit bump, tag and push
+        env:
+          VERSION: ${{ steps.bump.outputs.version }}
+          BRANCH: ${{ github.event.inputs.branch }}
+        run: |
+          git add package.json package-lock.json 2>/dev/null || git add package.json
+          git commit -m "chore(release): $VERSION [skip ci]"
+
+          # 1) Push the version bump back to the source branch.
+          git push origin "HEAD:$BRANCH"
+
+          # 2) Create and push a tag named exactly as the version.
+          git tag "$VERSION"
+          git push origin "refs/tags/$VERSION"
+
+          # 3) Create and push a branch named exactly as the version.
+          git push origin "HEAD:refs/heads/$VERSION"
+
+      - name: Summary
+        run: |
+          echo "### Released \`${{ steps.bump.outputs.version }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "- channel: **${{ github.event.inputs.release_type }}**" >> "$GITHUB_STEP_SUMMARY"
+          echo "- from branch: \`${{ github.event.inputs.branch }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- npm: https://www.npmjs.com/package/search-switch/v/${{ steps.bump.outputs.version }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- tag & branch pushed: \`${{ steps.bump.outputs.version }}\`" >> "$GITHUB_STEP_SUMMARY"

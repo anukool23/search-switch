@@ -1,0 +1,66 @@
+{
+  "name": "search-switch",
+  "version": "0.1.0",
+  "description": "Backend-agnostic search & analytics data layer — one generic API over OpenSearch today, Elasticsearch / Meilisearch / others later. Switching backends is a config change, not a rewrite.",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "prepublishOnly": "npm run typecheck && npm run test && npm run build"
+  },
+  "keywords": [
+    "search",
+    "opensearch",
+    "elasticsearch",
+    "meilisearch",
+    "analytics",
+    "aggregations",
+    "typescript"
+  ],
+  "author": "anukool23",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/anukool23/search-switch.git"
+  },
+  "peerDependencies": {
+    "@opensearch-project/opensearch": ">=2.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@opensearch-project/opensearch": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@opensearch-project/opensearch": "^2.5.0",
+    "@types/node": "^20.0.0",
+    "@vitest/coverage-v8": "^1.0.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.0.0",
+    "vitest": "^1.0.0"
+  }
+}
