@@ -47,6 +47,10 @@
     "type": "git",
     "url": "https://github.com/anukool23/search-switch.git"
   },
+  "homepage": "https://forge.anukool.me/search-switch",
+  "bugs": {
+    "url": "https://github.com/anukool23/search-switch/issues"
+  },
   "peerDependencies": {
     "@opensearch-project/opensearch": ">=2.0.0"
   },

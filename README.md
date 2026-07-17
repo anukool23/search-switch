@@ -4,6 +4,8 @@ Backend-agnostic search & analytics data layer for TypeScript.
 
 One generic API over OpenSearch today — Elasticsearch, Meilisearch, and others later. **Switching backends is a config change, not a rewrite.**
 
+📖 **[Full documentation → forge.anukool.me/search-switch](https://forge.anukool.me/search-switch)**
+
 ```bash
 npm install search-switch @opensearch-project/opensearch
 ```
